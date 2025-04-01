@@ -62,7 +62,6 @@ exports.gerarCobranca = onCall( async ( request)=> {
         failure: "https://www.mercadopago.com.br/",
         pending: "https://www.mercadopago.com.br/",
       },
-      auto_return: "approved",
     };
     // Endpoint Mercado Pago
     const responseMP = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -111,8 +110,11 @@ exports.statusAssinatura = onCall(async (request) => {
     throw new Error("Loja não encontrada");
   }
   const storeData = store.data();
-  const subscribe = storeData.subscripion
+  const endAt = storeData.subscription.endAt._seconds;
+  const serverTimestamp = Date.now();
+  // const subscribe = storeData.subscripion;
   return {
-    subscripion: subscribe,
-  }
+    status: endAt > serverTimestamp ? "active" : "inactive",
+    endAt: endAt,
+  };
 });
