@@ -97,3 +97,22 @@ exports.gerarCobranca = onCall( async ( request)=> {
     };
   }
 });
+// Função para Buscar o Status da Assinatura
+exports.statusAssinatura = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("Usuário não autenticado");
+  } if (!request.data.storeId) {
+    throw new Error("Loja Não Informada!");
+  }
+  const storeId = request.data.storeId;
+  const store = await admin.firestore().collection("stores")
+      .doc(storeId).get();
+  if (!store.exists) {
+    throw new Error("Loja não encontrada");
+  }
+  const storeData = store.data();
+  const subscribe = storeData.subscripion
+  return {
+    subscripion: subscribe,
+  }
+});
