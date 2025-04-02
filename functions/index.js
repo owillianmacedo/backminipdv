@@ -113,6 +113,7 @@ exports.statusAssinatura = onCall(async (request) => {
     endAt: endAt,
   };
 });
+// Recebe Notificação do Mercado Pago
 exports.mercadoPagoWebhook = onRequest(async (req, res) => {
   try {
     const CLIENT_SECRET = process.env.MP_PAYMENTHOOK_TEST;
