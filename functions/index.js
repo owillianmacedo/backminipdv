@@ -1,8 +1,8 @@
-
-const {onCall} = require("firebase-functions/v2/https");
+const {onCall, onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
+const crypto = require("crypto");
 admin.initializeApp();
 
 exports.teste = onCall((request) => {
@@ -77,11 +77,6 @@ exports.gerarCobranca = onCall( async ( request)=> {
       throw new Error(`Erro Mercado Pago 
         ${errorDetails.message || "Desconhecido"}`);
     }
-    if (!responseMP.ok) {
-      const errorDetails = await responseMP.json();
-      throw new Error(`Erro Mercado Pago: 
-        ${errorDetails.message || "Desconhecido"}`);
-    }
     const dataMP = await responseMP.json();
     return {
       store: store.data(),
@@ -117,4 +112,73 @@ exports.statusAssinatura = onCall(async (request) => {
     status: endAt > serverTimestamp ? "active" : "inactive",
     endAt: endAt,
   };
+});
+exports.mercadoPagoWebhook = onRequest(async (req, res) => {
+  try {
+    const CLIENT_SECRET = process.env.MP_PAYMENTHOOK_TEST;
+    if (!CLIENT_SECRET) {
+      console.error("Assinatura Não Definida!");
+      return res.status(500).send("Erro interno: Configuração inválida.");
+    }
+
+    const notification = req.body;
+    // const queryString = req.url.split("?")[1] || "";
+    const signature = req.headers["x-signature"];
+    const xRequestId = req.headers["x-request-id"];
+
+    if (!signature) {
+      console.error("Assinatura ausente");
+      return res.status(400).send("Assinatura ausente");
+    }
+
+    // Separar `ts` e `v1` do `x-signature`
+    const parts = signature.split(",");
+    let ts;
+    let receivedHash;
+    parts.forEach((part) => {
+      const [key, value] = part.split("=");
+      if (key && value) {
+        if (key.trim() === "ts") ts = value.trim();
+        if (key.trim() === "v1") receivedHash = value.trim();
+      }
+    });
+
+    if (!ts || !receivedHash) {
+      console.error("Formato inválido da assinatura");
+      return res.status(400).send("Formato inválido da assinatura");
+    }
+
+    // Construir a string do template de validação
+    const dataId = (notification &&
+      notification.data) ? notification.data.id : null;
+    if (!dataId) {
+      console.error("Notificação inválida: ID ausente");
+      return res.status(400).send("Notificação inválida");
+    }
+
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+
+    // Gerar a assinatura esperada usando HMAC SHA256
+    const hmac = crypto.createHmac("sha256", CLIENT_SECRET);
+    hmac.update(manifest);
+    const expectedHash = hmac.digest("hex");
+
+    // Comparar assinatura gerada com a recebida
+    if (expectedHash !== receivedHash) {
+      console.error("Assinatura inválida");
+      return res.status(403).send("Assinatura inválida");
+    }
+
+    // Se passou na validação, salva no Firestore
+    await admin.firestore().collection("pagamentos")
+        .doc(dataId.toString()).set({
+          recebido_em: admin.firestore.FieldValue.serverTimestamp(),
+          dados: notification,
+        });
+
+    return res.status(200).send("OK");
+  } catch (error) {
+    console.error("Erro ao processar a notificação:", error);
+    return res.status(500).send("Erro interno");
+  }
 });
