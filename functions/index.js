@@ -3,17 +3,9 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const crypto = require("crypto");
+const exp = require("constants");
 admin.initializeApp();
-
-exports.teste = onCall((request) => {
-  logger.info("Hello logs!", {structuredData: true});
-  return {text: "Hello from Function!", data:
-    {...request.data,
-      context: request.auth,
-    },
-  };
-});
-
+// Cria Preferencia MP
 exports.gerarCobranca = onCall( async ( request)=> {
   try {
     // token mercadopag
@@ -61,6 +53,15 @@ exports.gerarCobranca = onCall( async ( request)=> {
         success: "https://www.mercadopago.com.br/",
         failure: "https://www.mercadopago.com.br/",
         pending: "https://www.mercadopago.com.br/",
+      },
+      auto_return: "approved",
+      expires: true,
+      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 1 dia
+      metadata: {
+        storeId: storeId,
+        planId: planId,
+        userId: request.auth.uid,
+        userEmail: request.auth.token.email,
       },
     };
     // Endpoint Mercado Pago
