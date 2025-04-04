@@ -220,11 +220,11 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
       dados: paymentData,
     });
     // Atualiza o status da loja no Firestore
-    if (!paymentData.metadata || !paymentData.metadata.storeId) {
+    if (!paymentData.metadata || !paymentData.metadata.store_id) {
       console.error("storeId ausente nos metadados do pagamento");
       return res.status(400).send("storeId ausente");
     }
-    const storeId = paymentData.metadata.storeId;
+    const storeId = paymentData.metadata.store_id;
     const storeRef = await db.collection("stores").doc(storeId).get();
     if (!storeRef.exists) {
       console.error("Loja não encontrada");
