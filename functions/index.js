@@ -3,9 +3,9 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const crypto = require("crypto");
-const exp = require("constants");
 admin.initializeApp();
-// Cria Preferencia MP
+const db = admin.firestore();
+// Criar Preferencia MP
 exports.gerarCobranca = onCall( async ( request)=> {
   try {
     // token mercadopag
@@ -21,6 +21,15 @@ exports.gerarCobranca = onCall( async ( request)=> {
     if ( !store.exists) {
       throw new Error("Loja não encontrada");
     }
+    // Criar um doc em planos para referenciar a Cobrança
+    const cobrancaRef = await db.collection("cobrancas").add({
+      storeId: storeId,
+      userId: request.auth.uid,
+      userEmail: request.auth.token.email,
+      status: "pending preference",
+    });
+    const cobrancaId = cobrancaRef.id;
+    // Cria a Preferência e referencia o doc correspondente
     // Recebe Id do Plano
     const planId = request.data.planId;
     if ( !planId) {
@@ -35,8 +44,8 @@ exports.gerarCobranca = onCall( async ( request)=> {
     // Item
     const item = {
       id: planId+"-"+storeId,
-      title: "Mensal miniPDV",
-      description: `Assinatura Mensal (30 Dias) - 
+      title: plan.data().nome,
+      description: `${plan.data.descricao} - 
           ${store.data().tradeName} - ${request.auth.token.email}`,
       quantity: 1,
       unit_price: plan.data().valor,
@@ -46,7 +55,6 @@ exports.gerarCobranca = onCall( async ( request)=> {
     const preference = {
       items: [item],
       auto_return: "all",
-      // notification_url: "https://www.mercadopago.com.br/",
       payer: {
         email: request.auth.token.email},
       back_urls: {
@@ -54,14 +62,16 @@ exports.gerarCobranca = onCall( async ( request)=> {
         failure: "https://www.mercadopago.com.br/",
         pending: "https://www.mercadopago.com.br/",
       },
-      auto_return: "approved",
       expires: true,
-      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 1 dia
+      expiration_date_to: new Date(
+          Date.now()+ 24 * 60 * 60 * 1000).toISOString(), // 1 dia
+      external_reference: cobrancaId,
       metadata: {
         storeId: storeId,
         planId: planId,
         userId: request.auth.uid,
         userEmail: request.auth.token.email,
+        cobrancaId: cobrancaId,
       },
     };
     // Endpoint Mercado Pago
@@ -75,10 +85,16 @@ exports.gerarCobranca = onCall( async ( request)=> {
     });
     if ( !responseMP.ok) {
       const errorDetails = await responseMP.json();
-      throw new Error(`Erro Mercado Pago 
-        ${errorDetails.message || "Desconhecido"}`);
+      throw new Error(`Erro Mercado Pago:
+         ${JSON.stringify(errorDetails)}`);
     }
     const dataMP = await responseMP.json();
+    // Salva os Dados da Preferencia no Firestore
+    await db.collection("cobrancas").doc(cobrancaId).update({
+      preferenceId: dataMP.id,
+      status: "pending payment",
+    });
+    // Envia a id da preferencia para o frontend
     return {
       store: store.data(),
       plan: plan.data(),
