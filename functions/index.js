@@ -132,6 +132,7 @@ exports.statusAssinatura = onCall(async (request) => {
 });
 // Recebe Notificação do Mercado Pago
 exports.mercadoPagoWebhook = onRequest(async (req, res) => {
+  // Manipulação da credencial
   try {
     const CLIENT_SECRET = process.env.MP_PAYMENTHOOK_TEST;
     if (!CLIENT_SECRET) {
@@ -186,17 +187,65 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
       console.error("Assinatura inválida");
       return res.status(403).send("Assinatura inválida");
     }
-
-    // Se passou na validação, salva no Firestore
-    await admin.firestore().collection("pagamentos")
-        .doc(dataId.toString()).set({
-          recebido_em: admin.firestore.FieldValue.serverTimestamp(),
-          dados: notification,
-        });
-
+    // Se passou na validação, buscar o pagamento
+    const paymentId = notification.data.id;
+    const payment = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${process.env.MP_SECRET_TEST}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!payment.ok) {
+      const errorDetails = await payment.json();
+      console.error("Erro ao buscar pagamento:", errorDetails);
+      return res.status(500).send("Erro ao buscar pagamento");
+    }
+    const paymentData = await payment.json();
+    // Verifica se o pagamento foi aprovado
+    if (paymentData.status !== "approved") {
+      console.error("Pagamento não aprovado");
+      return res.status(200).send("Pagamento não aprovado");
+    }
+    // Atualiza o status da cobrança no Firestore
+    const cobrancaId = paymentData.external_reference;
+    const cobrancaRef = await db.collection("cobrancas").doc(cobrancaId).get();
+    if (!cobrancaRef.exists) {
+      console.error("Cobrança não encontrada");
+      return res.status(404).send("Cobrança não encontrada");
+    }
+    await cobrancaRef.ref.update({
+      status: "approved",
+      paymentId: paymentId,
+      dados: paymentData,
+    });
+    // Atualiza o status da loja no Firestore
+    if (!paymentData.metadata || !paymentData.metadata.storeId) {
+      console.error("storeId ausente nos metadados do pagamento");
+      return res.status(400).send("storeId ausente");
+    }
+    const storeId = paymentData.metadata.storeId;
+    const storeRef = await db.collection("stores").doc(storeId).get();
+    if (!storeRef.exists) {
+      console.error("Loja não encontrada");
+      return res.status(404).send("Loja não encontrada");
+    }
+    const storeData = storeRef.data();
+    const today = new Date();
+    const expirationDate = today > storeData.subscription.endAt ?
+       today : storeData.subscription.endAt;
+    // Atualiza a data de expiração MEROLHAR
+    const newExpirationDate = new Date(
+        expirationDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    await storeRef.ref.update({
+      "subscription.endAt": newExpirationDate,
+      "subscription.payments":
+      admin.firestore.FieldValue.arrayUnion(cobrancaId),
+    });
     return res.status(200).send("OK");
   } catch (error) {
-    console.error("Erro ao processar a notificação:", error);
+    console.error("Erro ao processar o Pagamento:", error);
     return res.status(500).send("Erro interno");
   }
 });
+
