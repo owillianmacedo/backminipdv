@@ -123,11 +123,12 @@ exports.statusAssinatura = onCall(async (request) => {
   }
   const storeData = store.data();
   const endAt = storeData.subscription.endAt._seconds;
-  const serverTimestamp = Date.now();
+  const serverTimestamp = Date.now()/1000;
   // const subscribe = storeData.subscripion;
   return {
     status: endAt > serverTimestamp ? "active" : "inactive",
     endAt: endAt,
+    serverTimestamp: serverTimestamp,
   };
 });
 // Recebe Notificação do Mercado Pago
@@ -231,16 +232,20 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
       return res.status(404).send("Loja não encontrada");
     }
     const storeData = storeRef.data();
-    const today = new Date();
-    const expirationDate = today > storeData.subscription.endAt ?
-       today : storeData.subscription.endAt;
-    // Atualiza a data de expiração MEROLHAR
+    const today = admin.firestore.Timestamp.fromDate(new Date());
+    const currentEndAt = storeData.subscription.endAt;
+
+    const expirationDate = today.toMillis() >
+      currentEndAt.toMillis() ? today : currentEndAt;
+
+    const baseDate = expirationDate.toDate();
     const newExpirationDate = new Date(
-        expirationDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        baseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     await storeRef.ref.update({
-      "subscription.endAt": newExpirationDate,
+      "subscription.endAt":
+          admin.firestore.Timestamp.fromDate(newExpirationDate),
       "subscription.payments":
-      admin.firestore.FieldValue.arrayUnion(cobrancaId),
+          admin.firestore.FieldValue.arrayUnion(cobrancaId),
     });
     return res.status(200).send("OK");
   } catch (error) {
