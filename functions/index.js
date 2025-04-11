@@ -253,4 +253,14 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
     return res.status(500).send("Erro interno");
   }
 });
+// Função para cancelar a assinatura
+exports.deleteUserData = onCall(async (request) => {
+  if ( !request.auth) {
+    throw new Error("Usuário não autenticado");
+  }
+  return {
+    message: "Usuário autenticado",
+    userData: request.auth,
+  };
+});
 
