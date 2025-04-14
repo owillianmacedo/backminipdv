@@ -258,6 +258,7 @@ exports.deleteUserData = onCall(async (request) => {
   if ( !request.auth) {
     throw new Error("Usuário não autenticado");
   }
+  
   return {
     message: "Usuário autenticado",
     userData: request.auth,
