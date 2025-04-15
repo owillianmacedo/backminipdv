@@ -221,11 +221,11 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
       dados: paymentData,
     });
     // Atualiza o status da loja no Firestore
-    if (!paymentData.metadata || !paymentData.metadata.store_id) {
+    if (!paymentData.metadata || !paymentData.metadata.storeId) {
       console.error("storeId ausente nos metadados do pagamento");
       return res.status(400).send("storeId ausente");
     }
-    const storeId = paymentData.metadata.store_id;
+    const storeId = paymentData.metadata.storeId;
     const storeRef = await db.collection("stores").doc(storeId).get();
     if (!storeRef.exists) {
       console.error("Loja não encontrada");
@@ -253,15 +253,59 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
     return res.status(500).send("Erro interno");
   }
 });
-// Função para cancelar a assinatura
+// procura as subs coleções e deleta os documentos
+/**
+ * Deleta um documento e todas as suas subcoleções
+ * de forma recursiva
+ * Esta função percorre todas as subcoleções
+ * de um documento, deleta seus documentos
+ * e depois apaga o próprio documento.
+ *  É útil para garantir que não restem dados
+ * associados ao documento principal antes da sua exclusão.
+ *
+ * @param {FirebaseFirestore.DocumentReference} docRef -
+ *  A referência do documento a ser deletado.
+ * @return {Promise<void>} -
+ *  Retorna uma promessa que é resolvida quando o
+ *  documento e suas subcoleções são excluídos.
+ */
+async function deleteDocumentWithSubcollections(docRef) {
+  const subcollections = await docRef.listCollections();
+  for (const subcol of subcollections) {
+    const docs = await subcol.listDocuments();
+    for (const doc of docs) {
+      await deleteDocumentWithSubcollections(doc); // Recursivo!
+    }
+  }
+  await docRef.delete(); // Só apaga o doc depois de limpar subcoleções
+}
+// Função  para apagar dodos do user
 exports.deleteUserData = onCall(async (request) => {
-  if ( !request.auth) {
+  if (!request.auth) {
     throw new Error("Usuário não autenticado");
   }
-  
+  const uid = request.auth.uid;
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new Error("Usuário não encontrado");
+  }
+  const userData = userSnap.data();
+  const storeId = userData.stores[0];
+  const storeRef = db.collection("stores").doc(storeId);
+  const storeSnap = await storeRef.get();
+  if (!storeSnap.exists) {
+    throw new Error("Loja não encontrada");
+  }
+  // ⛔ Deleta a loja com todas as subcoleções
+  await deleteDocumentWithSubcollections(storeRef);
+  // ⛔ Deleta o usuário com todas as subcoleções
+  await deleteDocumentWithSubcollections(userRef);
+  // ⛔ Deleta o usuário do Firebase Auth
+  await admin.auth().deleteUser(uid).catch((error) => {
+    console.error("Erro ao deletar usuário do Auth:", error);
+  });
   return {
-    message: "Usuário autenticado",
-    userData: request.auth,
+    message: "Todos os dados e conta do usuário foram excluídos com sucesso",
   };
 });
-
