@@ -1,4 +1,5 @@
 const {onCall, onRequest} = require("firebase-functions/v2/https");
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
@@ -309,3 +310,36 @@ exports.deleteUserData = onCall(async (request) => {
     message: "Todos os dados e conta do usuário foram excluídos com sucesso",
   };
 });
+// Ao Criar um novo usuário
+// Cria uma Assinatura Trial
+// Listener para criar uma assinatura trial
+// ao criar um novo documento na coleção "stores"
+exports.createTrialSubscription =
+  onDocumentCreated({
+    region: "southamerica-east1",
+    document: "stores/{storeId}",
+  }, async (event) => {
+    try {
+      if (!event.data) {
+        console.error("Dados da loja ausentes");
+        return;
+      }
+
+      const storeId = event.params.storeId;
+
+      const today = admin.firestore.Timestamp.fromDate(new Date());
+      const trialExpirationDate =
+        new Date(today.toDate().getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      await admin.firestore().collection("stores").doc(storeId).update({
+        subscription: {
+          endAt: admin.firestore.Timestamp.fromDate(trialExpirationDate),
+          payments: [],
+        },
+      });
+
+      console.log(`Assinatura trial criada para a loja: ${storeId}`);
+    } catch (error) {
+      console.error("Erro ao criar assinatura trial:", error);
+    }
+  });
