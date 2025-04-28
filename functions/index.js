@@ -343,3 +343,4 @@ exports.createTrialSubscription =
       console.error("Erro ao criar assinatura trial:", error);
     }
   });
+  //versãoEstável 0001 para pequenas stores
