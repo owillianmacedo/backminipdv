@@ -280,13 +280,29 @@ exports.mercadoPagoWebhook = onRequest(async (req, res) => {
  */
 async function deleteDocumentWithSubcollections(docRef) {
   const subcollections = await docRef.listCollections();
-  for (const subcol of subcollections) {
-    const docs = await subcol.listDocuments();
-    for (const doc of docs) {
-      await deleteDocumentWithSubcollections(doc); // Recursivo!
+
+  await Promise.all(subcollections.map(async (subcollection) => {
+    const snapshot = await subcollection.get();
+    const batchSize = 500;
+    let batch = db.batch();
+    let count = 0;
+
+    for (const doc of snapshot.docs) {
+      batch.delete(doc.ref);
+      count++;
+
+      if (count % batchSize === 0) {
+        await batch.commit();
+        batch = db.batch();
+      }
     }
-  }
-  await docRef.delete(); // Só apaga o doc depois de limpar subcoleções
+
+    if (count % batchSize !== 0) {
+      await batch.commit();
+    }
+  }));
+
+  await docRef.delete();
 }
 // Função  para apagar dodos do user
 exports.deleteUserData = onCall(async (request) => {
@@ -351,4 +367,3 @@ exports.createTrialSubscription =
       console.error("Erro ao criar assinatura trial:", error);
     }
   });
-  //versãoEstável 0001 para pequenas stores
