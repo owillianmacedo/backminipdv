@@ -4,8 +4,11 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const crypto = require("crypto");
+const {newTicket} = require("./ajuda/criaNovoTicket");
 admin.initializeApp();
 const db = admin.firestore();
+// Exporta a função newTicket
+exports.newTicket = newTicket;
 // Criar Preferencia MP
 exports.gerarCobranca = onCall( async ( request)=> {
   try {
