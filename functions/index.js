@@ -49,7 +49,7 @@ exports.gerarCobranca = onCall( async ( request)=> {
     const item = {
       id: planId+"-"+storeId,
       title: plan.data().nome,
-      description: `${plan.data.descricao} - 
+      description: `${plan.data().descricao} - 
           ${store.data().tradeName} - ${request.auth.token.email}`,
       quantity: 1,
       unit_price: plan.data().valor,
