@@ -6,6 +6,11 @@ const fetch = require("node-fetch");
 const crypto = require("crypto");
 const {newTicket} = require("./ajuda/criaNovoTicket");
 admin.initializeApp();
+
+module.exports = {
+  ...require("./dashboard/users"),
+};
+
 const db = admin.firestore();
 // Exporta a função newTicket
 exports.newTicket = newTicket;
