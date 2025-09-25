@@ -1,6 +1,6 @@
-import { onDocumentDeleted} from "firebase-functions/v2/firestore";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { initializeApp } from "firebase-admin/app";
+import {onDocumentDeleted} from "firebase-functions/v2/firestore";
+import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import {initializeApp} from "firebase-admin/app";
 
 initializeApp();
 const db = getFirestore();
@@ -14,8 +14,8 @@ exports.usersCountDecrement = onDocumentDeleted("users/{userId}", async (event) 
     await Promise.all([
       // Decrementa contador
       counterRef.set(
-        { total: FieldValue.increment(-1) },
-        { merge: true }
+          {total: FieldValue.increment(-1)},
+          {merge: true},
       ),
 
       // Remove o log do usuário

@@ -1,6 +1,6 @@
-import { onDocumentCreated} from "firebase-functions/v2/firestore";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { initializeApp } from "firebase-admin/app";
+import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import {initializeApp} from "firebase-admin/app";
 
 initializeApp();
 const db = getFirestore();
@@ -16,8 +16,8 @@ exports.usersCountIncrement = onDocumentCreated("users/{userId}", async (event) 
     await Promise.all([
       // Incrementa contador
       counterRef.set(
-        { total: FieldValue.increment(1) },
-        { merge: true }
+          {total: FieldValue.increment(1)},
+          {merge: true},
       ),
 
       // Cria log do usuário
@@ -27,7 +27,7 @@ exports.usersCountIncrement = onDocumentCreated("users/{userId}", async (event) 
       }),
     ]);
 
-    //console.log("Contador incrementado e log do usuário criado.");
+    // console.log("Contador incrementado e log do usuário criado.");
   } catch (error) {
     console.error("Erro:", error);
   }
