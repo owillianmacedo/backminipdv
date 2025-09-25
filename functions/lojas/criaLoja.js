@@ -26,7 +26,7 @@ exports.criaLoja = onCall(async (request) => {
     // Verificar disponibilidade de Trial
     const userDoc = await admin.firestore().collection("users").doc(uid).get();
     const userData = userDoc.data();
-    //trial ainda disponivel
+    // trial ainda disponivel
     if (!userData.trial) {
       const seteDias = admin.firestore.Timestamp.fromDate(
           new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -36,13 +36,13 @@ exports.criaLoja = onCall(async (request) => {
         compras: [
           {
             plano: "trial",
-            criadoEm: admin.firestore.FieldValue.now(),
+            criadoEm: admin.firestore.Timestamp.now(),
             preferencia: "trial",
             payment: "trial",
           },
         ],
       };
-      await admin.firestore().collection("users").doc(uid).update({trial: true}); //marcar que usou trial
+      await admin.firestore().collection("users").doc(uid).update({trial: true}); // marcar que usou trial
     }
     if (userData.trial) {
       loja.plano = {
@@ -51,8 +51,8 @@ exports.criaLoja = onCall(async (request) => {
       };
     }
     const pessoa = {uid: uid, funcao: "proprietario", permissoes: [{all: true}]};
-    loja.pessoas = {pessoas:[pessoa.uid],
-      permissoes:[{pessoa}]
+    loja.pessoas = {pessoas: [pessoa.uid],
+      permissoes: [{pessoa}],
     };
     loja.proprietarios = [uid];
     loja.criadoEm = admin.firestore.FieldValue.serverTimestamp();
