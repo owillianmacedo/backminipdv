@@ -51,9 +51,8 @@ exports.criaLoja = onCall(async (request) => {
       };
     }
     const pessoa = {uid: uid, funcao: "proprietario", permissoes: [{all: true}]};
-    loja.pessoas = {pessoas: [pessoa.uid],
-      permissoes: [{pessoa}],
-    };
+    loja.pessoas = [pessoa.uid],
+    loja.permissoes = [pessoa],
     loja.proprietarios = [uid];
     loja.criadoEm = admin.firestore.FieldValue.serverTimestamp();
 
