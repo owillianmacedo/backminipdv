@@ -22,6 +22,7 @@ exports.criaLoja = onCall(async (request) => {
   } else {
     const loja = dados.loja;
     const uid = request.auth?.uid;
+    const email = request.auth?.token.email;
     if (!uid) return {error: "Usuário não autenticado"};
     // Verificar disponibilidade de Trial
     const userDoc = await admin.firestore().collection("users").doc(uid).get();
@@ -50,7 +51,7 @@ exports.criaLoja = onCall(async (request) => {
         compras: [],
       };
     }
-    const pessoa = {uid: uid, funcao: "proprietario", permissoes: [{all: true}]};
+    const pessoa = {uid: uid, funcao: "proprietario", permissoes: [{all: true}], email: email};
     loja.pessoas = [pessoa.uid],
     loja.permissoes = [pessoa],
     loja.proprietarios = [uid];
