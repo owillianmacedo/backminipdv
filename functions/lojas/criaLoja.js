@@ -51,7 +51,7 @@ exports.criaLoja = onCall(async (request) => {
         compras: [],
       };
     }
-    const pessoa = {uid: uid, funcao: "|Proprietário", permissoes: [{all: true}], email: email};
+    const pessoa = {uid: uid, funcao: "Proprietário", permissoes: [{all: true}], email: email};
     loja.pessoas = [pessoa.uid],
     loja.permissoes = [pessoa],
     loja.proprietarios = [uid];
