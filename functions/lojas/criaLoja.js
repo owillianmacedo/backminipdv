@@ -22,43 +22,39 @@ exports.criaLoja = onCall(async (request) => {
   } else {
     const loja = dados.loja;
     const uid = request.auth?.uid;
-    const email = request.auth?.token.email;
-    if (!uid) return {error: "Usuário não autenticado"};
-    // Verificar disponibilidade de Trial
-    const userDoc = await admin.firestore().collection("users").doc(uid).get();
-    const userData = userDoc.data();
-    // trial ainda disponivel
-    if (!userData.trial) {
-      const seteDias = admin.firestore.Timestamp.fromDate(
-          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      );
-      loja.plano = {
-        ativoAte: seteDias,
-        compras: [
-          {
-            plano: "trial",
-            criadoEm: admin.firestore.Timestamp.now(),
-            preferencia: "trial",
-            payment: "trial",
-          },
-        ],
-      };
-      await admin.firestore().collection("users").doc(uid).update({trial: true}); // marcar que usou trial
-    }
-    if (userData.trial) {
-      loja.plano = {
-        ativoAte: admin.firestore.Timestamp.now(),
-        compras: [],
-      };
-    }
-    const pessoa = {uid: uid, funcao: "Proprietário", permissoes: [{all: true}], email: email};
-    loja.pessoas = [pessoa.uid],
-    loja.permissoes = [pessoa],
-    loja.proprietarios = [uid];
-    loja.criadoEm = admin.firestore.FieldValue.serverTimestamp();
+    // Verifica Existencia de Outra Loja
+    const lojasExistentes = await admin.firestore()
+        .collection("lojas")
+        .where("proprietario", "array-contains", uid)
+        .get();
 
+    if (!lojasExistentes.empty) {
+      return {error: "Usuário já possui uma loja cadastrada"};
+    }
+    // trial
+    const seteDias = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    );
+    loja.acesso = {
+      ativoAte: seteDias,
+      compras: [
+        {
+          plano: "trial",
+          criadoEm: admin.firestore.Timestamp.now(),
+          preferencia: "trial",
+          payment: "trial",
+        },
+      ],
+    };
+    loja.proprietario = [uid];
+    loja.criadoEm = admin.firestore.FieldValue.serverTimestamp();
     try {
       const docRef = await admin.firestore().collection("lojas").add(loja);
+      // Grava o Campo loja: docRef.id em users/${userId}
+      await admin.firestore()
+          .collection("users")
+          .doc(uid)
+          .set({loja: docRef.id}, {merge: true});
       return {id: docRef.id};
     } catch (error) {
       console.error("Erro ao criar loja:", error);
