@@ -4,3 +4,5 @@ const {criaLoja} = require("./lojas/criaLoja");
 exports.criaLoja = criaLoja;
 const {deletaCat} = require("./produtos/deletaCat");
 exports.deletaCat = deletaCat;
+const {abreCaixa} = require("./caixa/abreCaixa");
+exports.abreCaixa = abreCaixa;
