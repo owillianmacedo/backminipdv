@@ -55,6 +55,31 @@ exports.criaLoja = onCall(async (request) => {
           .collection("users")
           .doc(uid)
           .set({loja: docRef.id}, {merge: true});
+      const caixaConfig = {
+        meiosDePagamento: [
+          {nome: "Dinheiro", ativo: true, geraDebito: false, icon: "mdi-cash", index: 0},
+          {nome: "Cartão de Crédito", ativo: true, geraDebito: false, icon: "mdi-credit-card", index: 1},
+          {nome: "Cartão de Débito", ativo: true, icon: "mdi-credit-card-outline", index: 2},
+          {nome: "Pix", ativo: true, geraDebito: false, icon: "mdi-cursor-move", index: 3},
+          {nome: "Cheque", ativo: false, geraDebito: false, icon: "mdi-bank-check", index: 4},
+          {nome: "Vale Alimentação", ativo: false, geraDebito: false, icon: "mdi-silverware-fork-knife", index: 5},
+          {nome: "Vale Refeição", ativo: false, geraDebito: false, icon: "mdi-silverware-fork-knife", index: 6},
+          {nome: "Fiado", ativo: false, geraDebito: true, icon: "mdi-account-cash", index: 7},
+          {nome: "Outros", ativo: false, geraDebito: false, icon: "mdi-dots-horizontal", index: 8},
+          {nome: "Crédito Loja", ativo: false, geraDebito: true, icon: "mdi-store", index: 9},
+          {nome: "Boleto Bancário", ativo: false, geraDebito: false, icon: "mdi-barcode", index: 10},
+          {nome: "Cartao Presente", ativo: false, geraDebito: false, icon: "mdi-wallet-giftcard", index: 11},
+        ],
+        catalogo: false,
+        focoEAN: true,
+        enviarVendaWhatsapp: false,
+      };
+      await admin.firestore()
+          .collection("lojas")
+          .doc(docRef.id)
+          .collection("caixas")
+          .doc("caixa")
+          .set(caixaConfig);
       return {id: docRef.id};
     } catch (error) {
       console.error("Erro ao criar loja:", error);
