@@ -42,7 +42,12 @@ exports.abreCaixa = onCall(async (request) => {
   await caixaRef.set({
     aberto: true,
     saldo,
-    registros: [],
+    registros: [{
+      tipo: "reforco",
+      valor: Number(saldo) ||0,
+      data: agora,
+      obs: "Abertura",
+    }],
     criadoEm: agora,
   });
 
