@@ -50,7 +50,7 @@ exports.salvaVenda = onCall(async (request)=> {
       if (fiado && cliente?.id) {
         const clienteRef = db.doc(`lojas/${lojaId}/clientes/${cliente.id}`);
         transaction.update(clienteRef, {
-          saldo: admin.firestore.FieldValue.increment(fiado.valor),
+          saldo: admin.firestore.FieldValue.increment(-fiado.valor),
         });
 
         const movimentacaoRef = clienteRef.collection("movimentacoes").doc();
